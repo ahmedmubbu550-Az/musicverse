@@ -65,6 +65,25 @@
         </div>
       </section>
 
+      <section class="content-section" id="musicSearchSection">
+        <div class="section-heading"><div><div class="eyebrow muted">SEARCH THE MUSIC CATALOG</div><h2>Find your <em>next song</em></h2></div><button class="text-link" id="apiSettingsToggle">API KEY SETTINGS <span>⚙</span></button></div>
+        <form class="music-search-form" id="musicSearchForm">
+          <input id="musicQuery" type="search" placeholder="Search songs, artists, albums… e.g. Arijit Singh" autocomplete="off" required>
+          <select id="musicGenre" aria-label="Music category"><option value="All">All music</option><option value="English">English</option><option value="Pakistani">Pakistani</option><option value="Bollywood">Bollywood</option></select>
+          <button class="primary-btn" type="submit">Search <b>⌕</b></button>
+        </form>
+        <div class="api-key-panel" id="apiKeyPanel" hidden>
+          <strong>Connect YouTube music search</strong>
+          <p>To fetch real search results, add a YouTube Data API v3 key. It is saved only in this browser, not in this public repository.</p>
+          <div class="api-key-row"><input id="youtubeApiKey" type="password" placeholder="Paste your Google API key" autocomplete="off"><button class="primary-btn" type="button" id="saveApiKey">Save key</button><button class="ghost-btn" type="button" id="clearApiKey">Clear</button></div>
+          <small>Restrict the key to YouTube Data API v3 and this website's HTTP referrer before using it.</small>
+          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Open Google Cloud Credentials ↗</a>
+        </div>
+        <div class="search-status" id="searchStatus">Search YouTube music videos and play them here. Add your API key in API Key Settings to begin.</div>
+        <div id="musicResults" class="music-results"></div>
+        <div class="search-pagination"><button class="ghost-btn" id="moreResults" type="button" hidden>Load more results</button></div>
+      </section>
+
       <section class="content-section" id="recentSection">
         <div class="section-heading"><div><div class="eyebrow muted">KEEP THE FEELING GOING</div><h2>Recently <em>played</em></h2></div><button class="text-link" id="clearRecent">CLEAR <span>×</span></button></div>
         <div id="recentList" class="track-list empty-state"><div class="empty-icon">♫</div><div><strong>Your next favourite starts here.</strong><p>Add a Spotify or YouTube link to start listening.</p></div></div>
