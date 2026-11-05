@@ -134,3 +134,149 @@ $$(".nav-item").forEach(b=>b.addEventListener("click",()=>{
 }));
 $("#backBtn").onclick=()=>window.history.back();$("#forwardBtn").onclick=()=>window.history.forward();
 $("#year").textContent=new Date().getFullYear();renderAll();
+
+/* MUSICVERSE built-in YouTube search + player */
+const YT_KEY_STORE="musicverse-youtube-api-key";
+let searchResults=[],searchNextPageToken="",searchCategoryValue="All";
+let ytPlayer=null,ytApiReady=false;
+window.onYouTubeIframeAPIReady=function(){ytApiReady=true; if(window.pendingMVVideoId) createYouTubePlayer(window.pendingMVVideoId);};
+(function loadYouTubeIframeAPI(){
+  if(document.querySelector('script[data-mv-youtube-api]'))return;
+  const s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";s.async=true;s.dataset.mvYoutubeApi="1";document.head.appendChild(s);
+})();
+function getYoutubeKey(){return localStorage.getItem(YT_KEY_STORE)||"";}
+function youtubeTrackFromResult(item){
+  const vid=item.id.videoId, existing=state.tracks.find(t=>t.videoId===vid||t.url==="https://www.youtube.com/watch?v="+vid);
+  if(existing)return existing;
+  return {id:"yt-"+vid,videoId:vid,provider:"youtube",embed:"https://www.youtube-nocookie.com/embed/"+vid,title:item.snippet.title,artist:item.snippet.channelTitle||"YouTube",url:"https://www.youtube.com/watch?v="+vid,category:searchCategoryValue==="All"?"Other":searchCategoryValue,playlistId:"",addedAt:Date.now()};
+}
+function searchErrorText(payload,status){
+  const reason=payload&&payload.error&&payload.error.errors&&payload.error.errors[0]&&payload.error.errors[0].reason;
+  if(status===403&&reason==="quotaExceeded")return "YouTube search quota has been reached for this Google Cloud project. Try again after the quota resets or review API quota in Google Cloud.";
+  if(status===403)return "Google rejected this API key. Check that YouTube Data API v3 is enabled and the key's website restriction includes https://ahmedmubbu550-az.github.io/*.";
+  if(status===400)return "The search request was rejected. Check the API key and try a simpler search.";
+  return "Could not load YouTube results. Please check your connection and API key, then try again.";
+}
+async function runMusicSearch(pageToken){
+  const key=getYoutubeKey(),query=$("#musicQuery").value.trim(),genre=$("#musicGenre").value;
+  if(!key){$("#apiKeyPanel").hidden=false;$("#searchStatus").textContent="Add your YouTube Data API v3 key in API Key Settings to fetch songs here.";$("#youtubeApiKey").focus();return;}
+  if(!query){$("#searchStatus").textContent="Enter a song, artist or album name to search.";return;}
+  if(!pageToken){searchResults=[];searchNextPageToken="";$("#musicResults").innerHTML="";$("#searchStatus").textContent="Searching YouTube music…";}
+  $("#moreResults").hidden=true;
+  const genreTerms={English:" English music",Pakistani:" Pakistani music",Bollywood:" Bollywood Hindi music"};
+  const q=query+(genre==="All"?"":genreTerms[genre]||"");
+  const params=new URLSearchParams({part:"snippet",type:"video",videoCategoryId:"10",videoEmbeddable:"true",maxResults:"12",regionCode:"IN",safeSearch:"moderate",q,key});
+  if(pageToken)params.set("pageToken",pageToken);
+  try{
+    const response=await fetch("https://www.googleapis.com/youtube/v3/search?"+params.toString());
+    const payload=await response.json();
+    if(!response.ok){$("#searchStatus").textContent=searchErrorText(payload,response.status);return;}
+    const items=(payload.items||[]).filter(x=>x.id&&x.id.videoId&&x.snippet);
+    searchResults=pageToken?searchResults.concat(items):items;
+    searchNextPageToken=payload.nextPageToken||"";
+    renderMusicResults();
+    $("#searchStatus").textContent=searchResults.length?("Showing "+searchResults.length+" YouTube music results for “"+query+"”. Select any result to play it here."):"No music videos were found. Try another song or artist name.";
+    $("#moreResults").hidden=!searchNextPageToken;
+  }catch(err){$("#searchStatus").textContent="Network error while searching YouTube. Check your internet connection and try again.";}
+}
+function renderMusicResults(){
+  $("#musicResults").innerHTML=searchResults.map((item,index)=>{
+    const sn=item.snippet||{},thumb=(sn.thumbnails&&(sn.thumbnails.medium||sn.thumbnails.high||sn.thumbnails.default)||{}).url||"";
+    return '<article class="music-result"><img class="music-result-thumb" src="'+safeText(thumb)+'" alt="" loading="lazy"><div class="music-result-body"><div class="music-result-title">'+safeText(sn.title||"Untitled video")+'</div><div class="music-result-channel">'+safeText(sn.channelTitle||"YouTube")+'</div><div class="music-result-actions"><button class="primary-btn" type="button" data-play-search="'+index+'">▶ Play here</button><button class="small-action" type="button" data-queue-search="'+index+'" title="Add to library">＋</button></div></div></article>';
+  }).join("");
+}
+function makeSearchQueue(){
+  return searchResults.map(youtubeTrackFromResult);
+}
+function selectSearchResult(index){
+  const queue=makeSearchQueue(),track=queue[index];
+  if(!track)return;
+  setCurrent(track,queue);
+}
+function addSearchResultToLibrary(index){
+  const queue=makeSearchQueue(),track=queue[index];
+  if(!track)return;
+  if(!state.tracks.some(t=>t.id===track.id))state.tracks.unshift(track);
+  localStorage.setItem(STORE,JSON.stringify(state));renderAll();toast("Added to your MUSICVERSE library");
+}
+function setCurrent(track,queue){
+  if(!track)return;
+  if(!state.tracks.some(t=>t.id===track.id))state.tracks.unshift(track);
+  currentId=track.id;
+  currentQueue=queue&&queue.length?queue:[track];
+  queueIndex=currentQueue.findIndex(t=>t.id===track.id);
+  state.recent=[track.id,...state.recent.filter(x=>x!==track.id)].slice(0,20);
+  localStorage.setItem(STORE,JSON.stringify(state));renderAll();
+  $("#nowTitle").textContent=track.title;
+  $("#nowArtist").textContent=track.artist||track.category;
+  $("#nowArt").textContent=track.category==="Pakistani"?"پ":track.category==="Bollywood"?"ब":"♫";
+  $("#playPauseBtn").textContent="Ⅱ";
+  $("#playerHint").textContent="Now playing · "+track.category;
+  showEmbed(track);
+}
+function showEmbed(track){
+  let panel=$("#activeEmbed");
+  if(!panel){panel=document.createElement("section");panel.id="activeEmbed";panel.className="content-section embed-panel";$("#recentSection").after(panel);}
+  if(ytPlayer&&typeof ytPlayer.destroy==="function"){try{ytPlayer.destroy();}catch(e){}ytPlayer=null;}
+  const title=safeText(track.title),artist=safeText(track.artist||"");
+  if(track.provider==="youtube"||track.videoId){
+    panel.classList.add("youtube");
+    panel.innerHTML='<div class="section-heading"><div><div class="eyebrow muted">NOW PLAYING · YOUTUBE</div><h2>'+title+'</h2></div><button class="text-link" id="closeEmbed">CLOSE ×</button></div><p class="embed-title">'+artist+'</p><div id="youtubePlayerMount"></div>';
+    $("#closeEmbed").onclick=()=>{if(ytPlayer){ytPlayer.destroy();ytPlayer=null;}panel.remove();};
+    window.pendingMVVideoId=track.videoId||parseProvider(track.url)?.videoId;
+    if(!window.pendingMVVideoId&&track.url){const parsed=new URL(track.url);window.pendingMVVideoId=parsed.hostname==="youtu.be"?parsed.pathname.slice(1):parsed.searchParams.get("v");}
+    if(ytApiReady)createYouTubePlayer(window.pendingMVVideoId);
+  }else{
+    panel.classList.remove("youtube");
+    panel.innerHTML='<div class="section-heading"><div><div class="eyebrow muted">NOW LOADED · SPOTIFY</div><h2>'+title+'</h2></div><button class="text-link" id="closeEmbed">CLOSE ×</button></div><p class="embed-title">'+artist+' · Playback controls are provided by Spotify.</p><iframe src="'+safeText(track.embed)+'" title="'+title+'" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
+    $("#closeEmbed").onclick=()=>panel.remove();
+  }
+  panel.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function createYouTubePlayer(videoId){
+  if(!videoId||!window.YT||!YT.Player||!$("#youtubePlayerMount"))return;
+  if(ytPlayer){try{ytPlayer.destroy();}catch(e){}ytPlayer=null;}
+  ytPlayer=new YT.Player("youtubePlayerMount",{height:"360",width:"100%",videoId:videoId,playerVars:{autoplay:1,controls:1,playsinline:1,rel:0,origin:window.location.origin},events:{
+    onReady:function(e){e.target.playVideo();},
+    onStateChange:function(e){if(e.data===YT.PlayerState.PLAYING)$("#playPauseBtn").textContent="Ⅱ";if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.ENDED)$("#playPauseBtn").textContent="▶";if(e.data===YT.PlayerState.ENDED){if(repeat)e.target.seekTo(0,true),e.target.playVideo();else moveQueue(1);}},
+    onError:function(){toast("This video cannot be embedded. Choose another result.");}
+  }});
+}
+function playTrack(tid){
+  const track=state.tracks.find(t=>t.id===tid);if(!track)return;
+  const group=state.tracks.filter(t=>t.category===track.category);
+  setCurrent(track,group.length?group:[track]);
+}
+function moveQueue(dir){
+  if(!currentQueue||!currentQueue.length)return toast("Search for music or add a song first.");
+  if(repeat&&dir===1&&queueIndex===currentQueue.length-1){if(ytPlayer){ytPlayer.seekTo(0,true);ytPlayer.playVideo();}return;}
+  if(shuffle&&dir===1&&currentQueue.length>1){let n=queueIndex;while(n===queueIndex)n=Math.floor(Math.random()*currentQueue.length);queueIndex=n;}
+  else queueIndex=(queueIndex+dir+currentQueue.length)%currentQueue.length;
+  const next=currentQueue[queueIndex];if(next)setCurrent(next,currentQueue);
+}
+function togglePlayback(){
+  if(ytPlayer&&typeof ytPlayer.getPlayerState==="function"){
+    if(ytPlayer.getPlayerState()===YT.PlayerState.PLAYING){ytPlayer.pauseVideo();$("#playPauseBtn").textContent="▶";}
+    else{ytPlayer.playVideo();$("#playPauseBtn").textContent="Ⅱ";}
+  }else if(currentId){$("#activeEmbed")?.scrollIntoView({behavior:"smooth"});toast("Use Spotify's own player controls for this track.");}
+  else openModal();
+}
+function searchCategory(category){
+  const terms={English:"English pop music",Pakistani:"Pakistani songs Coke Studio",Bollywood:"Bollywood Hindi songs"};
+  $("#musicGenre").value=category;$("#musicQuery").value=terms[category]||category+" music";
+  $("#musicSearchSection").scrollIntoView({behavior:"smooth"});
+  runMusicSearch("");
+}
+$("#apiSettingsToggle").onclick=()=>{$("#apiKeyPanel").hidden=!$("#apiKeyPanel").hidden;if(!$("#apiKeyPanel").hidden)$("#youtubeApiKey").focus();};
+$("#youtubeApiKey").value=getYoutubeKey();
+$("#saveApiKey").onclick=()=>{const key=$("#youtubeApiKey").value.trim();if(!key){toast("Paste your Google API key first.");return;}localStorage.setItem(YT_KEY_STORE,key);$("#apiKeyPanel").hidden=true;toast("YouTube search key saved in this browser.");if($("#musicQuery").value.trim())runMusicSearch("");};
+$("#clearApiKey").onclick=()=>{localStorage.removeItem(YT_KEY_STORE);$("#youtubeApiKey").value="";toast("API key removed from this browser.");};
+$("#musicSearchForm").addEventListener("submit",e=>{e.preventDefault();runMusicSearch("");});
+$("#moreResults").onclick=()=>{if(searchNextPageToken)runMusicSearch(searchNextPageToken);};
+$("#playPauseBtn").onclick=togglePlayback;
+document.addEventListener("click",e=>{
+  const p=e.target.closest("[data-play-search]");if(p)selectSearchResult(Number(p.dataset.playSearch));
+  const q=e.target.closest("[data-queue-search]");if(q)addSearchResultToLibrary(Number(q.dataset.queueSearch));
+});
+if(getYoutubeKey()){$("#searchStatus").textContent="Search YouTube music videos and play selected results here."; }
+renderAll();
