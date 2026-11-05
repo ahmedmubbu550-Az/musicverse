@@ -1,56 +1,42 @@
 # MUSICVERSE
 
-A responsive, premium dark music-library web app designed for GitHub Pages. No build tools, server, database, or API key required.
+A responsive premium music-library web app with shared YouTube music search and official embedded playback.
 
 ## Features
+- Search YouTube music videos directly inside MUSICVERSE
 - English, Pakistani and Bollywood discovery shortcuts
-- Add Spotify track / album / playlist / artist links
-- Add YouTube video and playlist links
-- Embedded official provider players
-- Custom playlists (create, rename, delete)
-- Favorites, recently played, category queues, shuffle and repeat controls
-- Local browser storage (your library stays in the browser/device where you created it)
-- Mobile-friendly layout
+- Play selected YouTube search results in the in-page YouTube IFrame Player
+- Add Spotify track, album, playlist and artist embeds
+- Custom playlists, favorites and recently played
+- Category queues, shuffle and repeat
+- Mobile-friendly dark interface
+- Local browser storage for each user's personal library
 
-## Important streaming note
-MUSICVERSE does not host, scrape, download, or bypass music services. Playback is provided by official Spotify and YouTube embeds. You need to add links to content available on those services. Provider account, region, ad, and playback restrictions still apply. The app's previous/next buttons move through the app's category queue; actual play/pause, seeking, and volume are controlled inside the embedded Spotify/YouTube player. Spotify may require login and its embed experience can vary by track/account/device.
+## Shared search architecture
+The browser calls the Vercel serverless endpoint at `/api/search`. The endpoint reads `YOUTUBE_API_KEY` from the Vercel server environment and calls YouTube Data API v3. The API key is never sent to the browser and users do not need to paste their own key.
 
-## Run locally
-Open `index.html` in a modern browser. For best results, serve the folder using VS Code Live Server or:
+## Deploy to Vercel
+1. Import this GitHub repository into Vercel and deploy the project root.
+2. In the Vercel project, open **Settings → Environment Variables**.
+3. Add `YOUTUBE_API_KEY` with your Google Cloud YouTube Data API v3 key. Set the target to **Production**, and also **Preview** if you use preview deployments.
+4. Redeploy after adding the variable.
+
+### Google API key setup
+1. In Google Cloud Console, enable **YouTube Data API v3**.
+2. Create a new API key.
+3. Under **API restrictions**, restrict it to **YouTube Data API v3** only.
+4. Because the API call runs server-to-server from Vercel, do not use an HTTP-referrer (Websites) restriction for this key; the browser's website referrer is not the server's outgoing request origin. Keep it private in Vercel Environment Variables and never commit it to GitHub or paste it into the website.
+5. Monitor your Google Cloud API quota and billing settings.
+
+## Playback and licensing
+MUSICVERSE does not host, scrape, download, or bypass music services. Search results come from YouTube Data API v3 and play through YouTube's official embedded player. Actual play/pause, seek and volume are available in the embedded player. YouTube account, regional, advertising, embed-permission and content restrictions still apply. Spotify content plays through Spotify's official embed, whose playback experience varies by track, account, region and device.
+
+## Local development
+Open `index.html` through a local web server and run the Vercel Functions locally with the Vercel CLI:
 ```bash
-python -m http.server 8000
+vercel dev
 ```
-Then visit `http://localhost:8000`.
-
-## Publish on GitHub Pages
-1. Open this repository's **Settings → Pages**.
-2. Under **Build and deployment**, choose **GitHub Actions** as the source.
-3. The included workflow deploys the static site when changes are pushed to `main`.
-
-The expected site URL is `https://ahmedmubbu550-az.github.io/musicverse/`.
-
-## Use it
-1. Open the live website.
-2. Click **＋ Add a song**.
-3. Enter a display name and optionally artist.
-4. Paste a Spotify URL (`https://open.spotify.com/track/...`, `/album/...`, `/playlist/...`) or YouTube URL (`https://www.youtube.com/watch?v=...`, `https://youtu.be/...`, or a playlist URL).
-5. Choose English, Pakistani, Bollywood or Other and optionally a playlist.
-6. Click **Add to MUSICVERSE**. The provider's embedded player appears on the page.
-7. Use the provider player for play/pause, seek and volume. MUSICVERSE controls the library, favorites, category queue, shuffle and repeat.
+Set `YOUTUBE_API_KEY` in the local Vercel environment (for example via the Vercel project environment settings). Do not commit `.env` files.
 
 ## Data and privacy
-Your playlist data is stored in this browser's `localStorage`. It does not sync across devices or browsers. Anyone with access to the same browser profile can see it. GitHub Pages hosts public website files; do not put secrets or private data in this repository.
-
-
-## Built-in YouTube music search
-The Discover section now includes search results from YouTube's music video category. To activate it:
-1. Create or select a project in [Google Cloud Console](https://console.cloud.google.com/).
-2. Enable **YouTube Data API v3** in APIs & Services → Library.
-3. Go to APIs & Services → Credentials → Create credentials → API key.
-4. Open the key's settings. Under **Application restrictions**, choose **Websites** and add:
-   `https://ahmedmubbu550-az.github.io/*`
-5. Under **API restrictions**, choose **Restrict key** and allow only **YouTube Data API v3**. Save.
-6. Open MUSICVERSE → **API KEY SETTINGS**, paste the key and save it in this browser.
-7. Search a song, artist or album. Select a result to load it into the in-page YouTube player and queue.
-
-The API key is stored in the current browser's localStorage and is not committed to this repository. Browser-based keys are visible to site visitors; HTTP-referrer and API restrictions reduce misuse but do not make a public client-side key secret. Monitor Google Cloud usage and quotas. Results depend on YouTube's catalog, the search terms, video embed permissions, regional settings and YouTube restrictions. Only playable/embeddable videos are requested where supported; some selected videos may still refuse embedding.
+Favorites, playlists and recently played items are stored in the current browser's localStorage and do not sync between devices. Search uses the shared server-side API key configured by the site owner. Do not put personal or private information in this public repository.
