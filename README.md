@@ -40,3 +40,17 @@ The expected site URL is `https://ahmedmubbu550-az.github.io/musicverse/`.
 
 ## Data and privacy
 Your playlist data is stored in this browser's `localStorage`. It does not sync across devices or browsers. Anyone with access to the same browser profile can see it. GitHub Pages hosts public website files; do not put secrets or private data in this repository.
+
+
+## Built-in YouTube music search
+The Discover section now includes search results from YouTube's music video category. To activate it:
+1. Create or select a project in [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable **YouTube Data API v3** in APIs & Services → Library.
+3. Go to APIs & Services → Credentials → Create credentials → API key.
+4. Open the key's settings. Under **Application restrictions**, choose **Websites** and add:
+   `https://ahmedmubbu550-az.github.io/*`
+5. Under **API restrictions**, choose **Restrict key** and allow only **YouTube Data API v3**. Save.
+6. Open MUSICVERSE → **API KEY SETTINGS**, paste the key and save it in this browser.
+7. Search a song, artist or album. Select a result to load it into the in-page YouTube player and queue.
+
+The API key is stored in the current browser's localStorage and is not committed to this repository. Browser-based keys are visible to site visitors; HTTP-referrer and API restrictions reduce misuse but do not make a public client-side key secret. Monitor Google Cloud usage and quotas. Results depend on YouTube's catalog, the search terms, video embed permissions, regional settings and YouTube restrictions. Only playable/embeddable videos are requested where supported; some selected videos may still refuse embedding.
