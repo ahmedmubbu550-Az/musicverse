@@ -72,7 +72,8 @@
           <select id="musicGenre" aria-label="Music category"><option value="All">All music</option><option value="English">English</option><option value="Pakistani">Pakistani</option><option value="Bollywood">Bollywood</option></select>
           <button class="primary-btn" type="submit">Search <b>⌕</b></button>
         </form>
-        <div class="search-status" id="searchStatus">Search YouTube music videos and play them here. Search is ready for everyone.</div>
+        <div hidden aria-hidden="true"><button id="apiSettingsToggle" type="button"></button><div class="api-key-panel" id="apiKeyPanel"><input id="youtubeApiKey" type="password"><button id="saveApiKey" type="button"></button><button id="clearApiKey" type="button"></button></div></div>
+        <div class="search-status" id="searchStatus">Search YouTube music and play it here. No API key entry is required.</div>
         <div id="musicResults" class="music-results"></div>
         <div class="search-pagination"><button class="ghost-btn" id="moreResults" type="button" hidden>Load more results</button></div>
       </section>
@@ -115,5 +116,6 @@
   </div>
   <div class="toast" id="toast" role="status"></div>
   <script src="app.js"></script>
+  <script src="shared-search.js"></script>
 </body>
 </html>
