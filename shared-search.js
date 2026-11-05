@@ -114,4 +114,5 @@ searchCategory=function(category){
   $("#musicGenre").value=category;$("#musicQuery").value=words[category]||category+" music";
   $("#musicSearchSection").scrollIntoView({behavior:"smooth"});runMusicSearch("");
 };
+$("#playPauseBtn").onclick=togglePlayback;
 $("#searchStatus").textContent="Search YouTube music and play it here. No API key entry is required.";
