@@ -280,3 +280,36 @@ document.addEventListener("click",e=>{
 });
 if(getYoutubeKey()){$("#searchStatus").textContent="Search YouTube music videos and play selected results here."; }
 renderAll();
+
+/* Background playback helper */
+(function(){
+  function silentWav(){
+    const rate=8000,n=rate,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+    const w=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+    w(0,"RIFF");v.setUint32(4,36+n,true);w(8,"WAVE");w(12,"fmt ");
+    v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+    v.setUint32(24,rate,true);v.setUint32(28,rate,true);v.setUint16(32,1,true);
+    v.setUint16(34,8,true);w(36,"data");v.setUint32(40,n,true);
+    for(let i=0;i<n;i++)v.setUint8(44+i,128);
+    return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+  }
+  const keepAlive=new Audio(silentWav());
+  keepAlive.loop=true;
+
+  const ms=navigator.mediaSession;
+  function setupMediaSession(track){
+    if(!ms)return;
+    ms.metadata=new MediaMetadata({title:track.title||"MUSICVERSE",artist:track.artist||""});
+    ms.setActionHandler("play",()=>{ytPlayer&&ytPlayer.playVideo&&ytPlayer.playVideo();keepAlive.play().catch(()=>{});});
+    ms.setActionHandler("pause",()=>{ytPlayer&&ytPlayer.pauseVideo&&ytPlayer.pauseVideo();});
+    ms.setActionHandler("nexttrack",()=>$("#nextBtn").click());
+    ms.setActionHandler("previoustrack",()=>$("#prevBtn").click());
+  }
+
+  const originalSetCurrent=setCurrent;
+  setCurrent=function(track,queue){
+    originalSetCurrent(track,queue);
+    keepAlive.play().catch(()=>{});
+    setupMediaSession(track);
+  };
+})();
