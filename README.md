@@ -40,3 +40,4 @@ Set `YOUTUBE_API_KEY` in the local Vercel environment (for example via the Verce
 
 ## Data and privacy
 Favorites, playlists and recently played items are stored in the current browser's localStorage and do not sync between devices. Search uses the shared server-side API key configured by the site owner. Do not put personal or private information in this public repository.
+
