@@ -19,8 +19,8 @@ export default async function handler(req, res) {
   const genre = typeof req.query.genre === "string" ? req.query.genre : "All";
   const pageToken = typeof req.query.pageToken === "string" ? req.query.pageToken : "";
 
-  if (query.length < 2 || query.length > 100) {
-    return res.status(400).json({ error: "Search must be between 2 and 100 characters." });
+  if (query.length < 1 || query.length > 100) {
+    return res.status(400).json({ error: "Search must be between 1 and 100 characters." });
   }
   if (!["All", "English", "Pakistani", "Bollywood"].includes(genre)) {
     return res.status(400).json({ error: "Invalid music category." });

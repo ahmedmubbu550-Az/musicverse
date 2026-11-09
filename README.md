@@ -3,17 +3,20 @@
 A responsive premium music-library web app with shared YouTube music search and official embedded playback.
 
 ## Features
-- Search YouTube music videos directly inside MUSICVERSE
-- English, Pakistani and Bollywood discovery shortcuts
-- Play selected YouTube search results in the in-page YouTube IFrame Player
-- Add Spotify track, album, playlist and artist embeds
-- Custom playlists, favorites and recently played
-- Category queues, shuffle and repeat
-- Mobile-friendly dark interface
-- Local browser storage for each user's personal library
+- Premium dashboard layout: sidebar, search bar, now-playing panel with queue, full player bar
+- Mobile app layout: bottom tab bar, mini player, swipe-down full-screen player
+- **Instant search** — results appear as you type, from the first letter. Partial words work ("ari" finds Arijit Singh), matches are highlighted, and suggestions complete your keyword
+- Two sources: **Free music** (Audius, audio-only, keeps playing with the screen locked) and **YouTube** (via the `/api/search` serverless function)
+- Top result, songs, artists and "from your library" sections, plus filters and recent searches
+- Trending now, genre/mood tiles, recently played, artist pages
+- Liked songs, saved songs, unlimited playlists (create, rename, delete, add/remove songs)
+- Add Spotify or YouTube links manually
+- Shuffle, repeat (all / one), seek, volume, play-next, lock-screen and headset controls
+- Keyboard shortcuts: `/` or `Ctrl+K` search, `Space` play/pause, `Shift+→/←` next/previous, `L` like
+- Library is stored in the browser (localStorage); old MUSICVERSE data is migrated automatically
 
 ## Shared search architecture
-The browser calls the Vercel serverless endpoint at `/api/search`. The endpoint reads `YOUTUBE_API_KEY` from the Vercel server environment and calls YouTube Data API v3. The API key is never sent to the browser and users do not need to paste their own key.
+The browser calls the Vercel serverless endpoint at `/api/search`. `/api/suggest` returns keyword completions for partial words (no API key or quota needed). The search endpoint reads `YOUTUBE_API_KEY` from the Vercel server environment and calls YouTube Data API v3. The API key is never sent to the browser and users do not need to paste their own key.
 
 ## Deploy to Vercel
 1. Import this GitHub repository into Vercel and deploy the project root.
