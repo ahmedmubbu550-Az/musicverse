@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.musicverse_ecru.twa",
+        "sha256_cert_fingerprints": ["B4:46:98:EA:C9:23:73:67:40:5E:58:F4:4F:89:9B:7E:3C:28:5E:AB:C4:3E:1C:CB:58:D0:B9:C0:F3:4A:90:06"]
+      }
+    }]
