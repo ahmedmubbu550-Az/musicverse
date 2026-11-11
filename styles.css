@@ -434,7 +434,7 @@ body:not(.is-playing) .eq i { animation-play-state: paused; transform: scaleY(.4
 .src-free { color: #cbbfff; background: rgba(139,108,255,.14); border: 1px solid rgba(139,108,255,.35); }
 .src-yt { color: #ffb0b0; background: rgba(255,80,80,.1); border: 1px solid rgba(255,80,80,.3); }
 .feed-chips { margin: -2px 0 14px; }
-.source-callout { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 34px; }
+.source-callout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 34px; }
 .source-callout-item { display: grid; gap: 10px; align-content: start; justify-items: start; padding: 18px; border-radius: var(--radius-lg); background: rgba(255,255,255,.035); border: 1px solid var(--line); }
 .source-callout-item p { color: var(--text-2); font-size: 13.5px; }
 .source-callout-item .ghost-btn { height: 38px; font-size: 13px; }
@@ -705,3 +705,21 @@ body:not(.is-playing) .eq i { animation-play-state: paused; transform: scaleY(.4
 
 .hero p b.hl-free { color: #cbbfff; }
 .hero p b.hl-yt { color: #ffb0b0; }
+
+/* ---------------- Live radio ---------------- */
+.hero p b.hl-radio { color: #ffd27a; }
+.src-radio { color: #ffd27a; background: rgba(255,176,32,.12); border: 1px solid rgba(255,176,32,.35); }
+.badge-radio { color: #ffd27a; border-color: rgba(255,176,32,.35); background: rgba(255,176,32,.08); }
+.np-note.radio { border-color: rgba(255,176,32,.3); background: rgba(255,176,32,.08); }
+.np-note.radio .i, .source-note.radio .i { color: #ffc24d; }
+.live-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ff4d4d; margin-right: 10px; vertical-align: middle; position: relative; top: -2px; box-shadow: 0 0 0 0 rgba(255,77,77,.6); animation: livePulse 1.6s ease-out infinite; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(255,77,77,.55); } 100% { box-shadow: 0 0 0 10px rgba(255,77,77,0); } }
+.live-pill { position: absolute; top: 20px; left: 20px; display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 6px; background: rgba(0,0,0,.65); backdrop-filter: blur(6px); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.live-pill i { width: 6px; height: 6px; border-radius: 50%; background: #ff4d4d; animation: livePulse 1.6s ease-out infinite; }
+.radio-section .art-lg { background: linear-gradient(135deg, hsl(var(--h) 70% 45%), hsl(calc(var(--h) + 40) 80% 30%)); }
+.art.logo img { object-fit: contain; background: #fff; padding: 12%; }
+@media (max-width: 1100px) { .source-callout { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 899px) {
+  .source-callout { grid-template-columns: 1fr; }
+  .live-pill { top: 8px; left: 8px; }
+}

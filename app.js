@@ -113,7 +113,7 @@
   function loadPrefs() {
     let p = {};
     try { p = JSON.parse(localStorage.getItem(PREFS)) || {}; } catch (e) { /* ignore */ }
-    return { source: p.source === "youtube" ? "youtube" : "audius", volume: typeof p.volume === "number" ? p.volume : 0.8, shuffle: !!p.shuffle, repeat: ["off", "all", "one"].includes(p.repeat) ? p.repeat : "off", genre: ["All", "English", "Pakistani", "Bollywood"].includes(p.genre) ? p.genre : "All", muted: !!p.muted };
+    return { source: ["youtube", "radio"].includes(p.source) ? p.source : "audius", volume: typeof p.volume === "number" ? p.volume : 0.8, shuffle: !!p.shuffle, repeat: ["off", "all", "one"].includes(p.repeat) ? p.repeat : "off", genre: ["All", "English", "Pakistani", "Bollywood"].includes(p.genre) ? p.genre : "All", muted: !!p.muted };
   }
   const state = loadState();
   const prefs = loadPrefs();
@@ -198,8 +198,8 @@
       embed: "https://www.youtube-nocookie.com/embed/" + v
     };
   }
-  const sourceLabel = (t) => ({ audius: "Free", youtube: "YouTube", spotify: "Spotify" }[t.provider] || "Link");
-  const siteName = (t) => ({ audius: "Audius", youtube: "YouTube", spotify: "Spotify" }[t.provider] || "source");
+  const sourceLabel = (t) => ({ audius: "Free", youtube: "YouTube", spotify: "Spotify", radio: "Live" }[t.provider] || "Link");
+  const siteName = (t) => ({ audius: "Audius", youtube: "YouTube", spotify: "Spotify", radio: "station website" }[t.provider] || "source");
   const isLiked = (id) => state.favorites.includes(id);
 
   /* ---------------- rendering primitives ---------------- */
@@ -207,7 +207,7 @@
     const h = hue((t.title || "") + (t.artist || ""));
     const initial = esc(((t.title || "♫").trim()[0]) || "♫");
     const img = t.artwork ? `<img src="${esc(t.artwork)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : "";
-    return `<div class="art art-${size} ${extra}" style="--h:${h}"><span>${initial}</span>${img}</div>`;
+    return `<div class="art art-${size} ${extra} ${t.provider === "radio" ? "logo" : ""}" style="--h:${h}"><span>${initial}</span>${img}</div>`;
   }
   const lists = Object.create(null); // listKey -> tracks[] (used to build play queues)
 
@@ -233,7 +233,7 @@
   function cardHTML(t, i, key) {
     const cur = current && current.id === t.id;
     return `<article class="card ${cur ? "is-current" : ""}" data-list="${key}" data-index="${i}" data-id="${esc(t.id)}" tabindex="0">
-      ${artHTML(t, "lg")}
+      ${artHTML(t, "lg")}${t.provider === "radio" ? '<span class="live-pill"><i></i>LIVE</span>' : ""}
       <button class="card-play" data-action="play" aria-label="Play ${esc(t.title)}">${icon("play")}</button>
       <strong>${esc(t.title)}</strong><small>${esc(t.artist)}</small>
     </article>`;
@@ -318,15 +318,22 @@
         <div class="hero-copy">
           <span class="eyebrow">${esc(greeting())}</span>
           <h1>Every mood.<br><span>One universe.</span></h1>
-          <p><b class="hl-free">Free music</b> keeps playing in the background. <b class="hl-yt">YouTube</b> has every latest hit — just keep the app open. Save favourites from both in one place.</p>
+          <p><b class="hl-radio">Live Radio</b> plays the latest hits 24/7 and <b class="hl-free">Free music</b> plays full songs — both keep going with your screen locked. <b class="hl-yt">YouTube</b> lets you pick any song while the app is open.</p>
           <div class="hero-actions">
-            <button class="primary-btn" data-action="play-trending">${icon("play")} Play trending</button>
-            <button class="ghost-btn" data-action="focus-search">${icon("search")} Search music</button>
+            <button class="primary-btn" data-action="play-radio" data-radio="bollywood">${icon("wave")} Play live radio</button>
+            <button class="ghost-btn" data-action="play-trending">${icon("play")} Play trending</button>
+            <button class="ghost-btn" data-action="focus-search">${icon("search")} Search</button>
           </div>
         </div>
         ${trending && trending[0] ? `<div class="hero-feature" data-list="trending" data-index="0" data-id="${esc(trending[0].id)}"><small>#1 Trending</small>${artHTML(trending[0], "lg")}<div><strong>${esc(trending[0].title)}</strong><span class="by">${esc(trending[0].artist)}</span></div></div>` : ""}
       </section>
       <div class="quick-grid">${quick.join("")}</div>
+
+      <section class="section radio-section">
+        <div class="section-head"><div><h2><span class="live-dot"></span>Live Radio <span class="src-tag src-radio">${icon("wave")} Latest hits · plays in background</span></h2><p>Real FM &amp; online stations playing the newest songs 24/7 — free, and keeps going with your screen locked</p></div><button class="link-btn" id="radioPlayAll" data-action="play-radio" data-radio="${esc(homeRadio)}">Play</button></div>
+        <div class="chips feed-chips" id="radioChips">${radioChipsHTML()}</div>
+        <div id="radioShelf">${radioBody(homeRadio)}</div>
+      </section>
 
       <section class="section">
         <div class="section-head"><div><h2>Trending this week <span class="src-tag src-free">${icon("wave")} Free · plays in background</span></h2><p>Full songs from independent artists — keeps playing with your screen locked</p></div><button class="link-btn" data-action="play-feed" data-feed="trend:${esc(homeGenre)}">Play all</button></div>
@@ -345,6 +352,7 @@
       </section>
 
       <div class="source-callout">
+        <div class="source-callout-item"><span class="src-tag src-radio">${icon("wave")} Live Radio</span><p>The latest Bollywood, Pakistani, Punjabi &amp; English hits, non-stop. Plays with the screen locked. The station picks the songs.</p><button class="ghost-btn" data-action="play-radio" data-radio="bollywood">${icon("play")} Start listening</button></div>
         <div class="source-callout-item"><span class="src-tag src-free">${icon("wave")} Free music</span><p>Plays in the background and with the screen locked. Independent artists, so mainstream hits may be missing.</p></div>
         <div class="source-callout-item"><span class="src-tag src-yt">${icon("music")} YouTube</span><p>The latest hits and every big release. Keep MUSICVERSE open while listening — YouTube pauses when you leave the app.</p><button class="ghost-btn" data-action="search-youtube">${icon("search")} Search YouTube hits</button></div>
       </div>
@@ -358,6 +366,7 @@
 
       ${state.playlists.length ? `<section class="section"><div class="section-head"><div><h2>Your playlists</h2></div><a class="link-btn" href="#/library">Library</a></div><div class="shelf">${state.playlists.map(playlistCardHTML).join("")}</div></section>` : ""}
     `;
+    if (!radioFeeds[homeRadio]) loadRadio(homeRadio);
     ["trend:" + homeGenre, "rising", "month"].forEach((k) => { if (!feeds[k]) loadFeed(k); });
     if (homeGenre !== "All" && !feeds["trend:All"]) loadFeed("trend:All"); // hero + "Play trending"
   }
@@ -416,6 +425,112 @@
     return `<article class="card" data-href="playlist/${esc(p.id)}" tabindex="0">${artHTML(first || { title: p.name, artist: p.id }, "lg")}<button class="card-play" data-action="play-collection" data-collection="playlist:${esc(p.id)}" aria-label="Play ${esc(p.name)}">${icon("play")}</button><strong>${esc(p.name)}</strong><small>Playlist · ${plural(p.trackIds.length, "song")}</small></article>`;
   }
   function loadTrending() { return loadFeed("trend:All"); }
+
+  /* ---------------- LIVE RADIO (Radio Browser public directory) ----------------
+     Real FM / internet stations streaming the latest hits 24/7. Plays through
+     the <audio> element, so it keeps going with the screen locked. Only HTTPS
+     MP3/AAC streams are used (browsers block insecure audio on HTTPS sites). */
+  const RB_MIRRORS = ["https://de1.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info", "https://de2.api.radio-browser.info"];
+  let rbBase = null;
+  async function rbFetch(path, signal) {
+    const order = rbBase ? [rbBase, ...RB_MIRRORS.filter((m) => m !== rbBase)] : RB_MIRRORS;
+    let lastErr;
+    for (const base of order) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        if (signal) signal.addEventListener("abort", () => ctrl.abort(), { once: true });
+        const r = await fetch(base + path, { signal: ctrl.signal, headers: { Accept: "application/json" } });
+        clearTimeout(timer);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        rbBase = base;
+        return await r.json();
+      } catch (e) {
+        if (signal && signal.aborted) throw Object.assign(new Error("aborted"), { name: "AbortError" });
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("Radio directory unavailable");
+  }
+  // "OLDIES" keeps the hit categories about new music; old favourites get their own row.
+  const OLDIES = /\b(gold|retro|nostalgi|old|classic|evergreen|[4-9]0'?s|ghazal)|kishore|lata ?mangeshkar|\brafi|mukesh|kumar ?sanu|forever/i;
+  const CHILL = /lo-?fi|chill|study|relax|ambient|beats|groove|lounge|smooth|calm|sleep/i;
+  const RADIO_CATS = [
+    { key: "bollywood", label: "Bollywood Hits", term: "bollywood", q: ["tag=bollywood", "language=hindi"], skip: OLDIES },
+    { key: "pakistan", label: "Pakistani FM", term: "pakistan", q: ["countrycode=PK"] },
+    { key: "punjabi", label: "Punjabi", term: "punjabi", q: ["tag=punjabi", "language=punjabi"] },
+    { key: "english", label: "English Hits", term: "top 40", q: ["tag=top 40&countrycode=US", "tag=top 40&countrycode=GB", "tag=hits&countrycode=GB"], skip: OLDIES },
+    { key: "lofi", label: "Lo-fi & Chill", term: "lofi", q: ["tag=lofi", "tag=chillout"], only: CHILL },
+    { key: "oldies", label: "Old is Gold", term: "retro", q: ["tag=bollywood", "language=hindi", "tag=retro"], only: OLDIES }
+  ];
+  const RADIO_RELIGIOUS = /quran|qur'an|tilawat|naat|islam\w*|bible|gospel|sermon|church|christian|kirtan|gurbani|bhajan|devotional/i;
+  const RADIO_NONMUSIC = /\b(news|talk|sports?|cricket)\b|erotic|sensual|sexy|adult|xxx/i; // checked on the station name only
+  const playableStation = (s) => s && s.stationuuid && /^https:\/\//.test(s.url_resolved || "") && !s.hls && /mp3|aac/i.test(s.codec || "")
+    && !RADIO_RELIGIOUS.test(`${s.name} ${s.tags}`) && !RADIO_NONMUSIC.test(s.name);
+  function cleanStationName(n) {
+    let s = String(n || "Radio").trim().replace(/^[#\-_\s>|]+/, "").replace(/\s+/g, " ");
+    if (s.length > 34) s = s.split(/\s(?:-{1,3}>?|@|\|\||\|)\s|,\s/)[0];
+    return s.length > 48 ? s.slice(0, 46).trim() + "…" : s;
+  }
+  function radioTrack(s) {
+    const where = [s.state, s.country].filter(Boolean).join(", ");
+    return {
+      id: "rb-" + s.stationuuid, provider: "radio", stationId: s.stationuuid,
+      title: cleanStationName(s.name), artist: "Live radio" + (where ? " · " + where : ""),
+      streamUrl: s.url_resolved, artwork: /^https:\/\//.test(s.favicon || "") ? s.favicon : "",
+      url: /^https?:\/\//.test(s.homepage || "") ? s.homepage : "", clicks: s.clickcount || 0
+    };
+  }
+  const RB_PARAMS = "order=clickcount&reverse=true&hidebroken=true&is_https=true";
+  async function fetchStations(queries, limit, offset, signal) {
+    const lists = await Promise.all(queries.map((q) => rbFetch(`/json/stations/search?${q}&${RB_PARAMS}&limit=${limit}&offset=${offset || 0}`, signal).catch((e) => { if (e.name === "AbortError") throw e; return []; })));
+    const seenId = new Set(), seenName = new Set(), out = [];
+    lists.flat().filter(playableStation).sort((a, b) => (b.clickcount || 0) - (a.clickcount || 0)).forEach((s) => {
+      const nm = norm(cleanStationName(s.name));
+      if (seenId.has(s.stationuuid) || seenName.has(nm)) return;
+      seenId.add(s.stationuuid); seenName.add(nm); out.push(s);
+    });
+    return { stations: out.map(radioTrack), full: lists.some((l) => l.length >= limit) };
+  }
+  let homeRadio = "bollywood";
+  const radioFeeds = Object.create(null);
+  function radioBody(key) {
+    const f = radioFeeds[key];
+    if (!f || f.loading) return skeletonCards(6);
+    if (f.error) return emptyHTML("wave", "Couldn't load radio stations", "Check your connection, then try again.", `<button class="ghost-btn" data-action="retry-radio" data-radio="${esc(key)}">Try again</button>`);
+    if (!f.items.length) return emptyHTML("wave", "No stations here right now", "Try another category.");
+    return cardsHTML("radio:" + key, f.items);
+  }
+  const radioChipsHTML = () => RADIO_CATS.map((c) => `<button class="chip ${homeRadio === c.key ? "on" : ""}" data-action="home-radio" data-radio="${c.key}">${esc(c.label)}</button>`).join("");
+  async function loadRadio(key) {
+    const cat = RADIO_CATS.find((c) => c.key === key); if (!cat) return;
+    if (radioFeeds[key] && radioFeeds[key].loading) return;
+    radioFeeds[key] = { loading: true, error: false, items: [] };
+    try {
+      const r = await fetchStations(cat.q, cat.skip || cat.only ? 80 : 30, 0);
+      let items = r.stations;
+      if (cat.skip) items = items.filter((t) => !cat.skip.test(t.title));
+      if (cat.only) items = items.filter((t) => cat.only.test(t.title));
+      items = items.slice(0, 30);
+      items.forEach((t) => known.set(t.id, t));
+      radioFeeds[key] = { loading: false, error: false, items };
+    } catch (e) { radioFeeds[key] = { loading: false, error: true, items: [] }; }
+    if (parseHash().name === "home" && key === homeRadio) { const slot = $("#radioShelf"); if (slot) { slot.innerHTML = radioBody(key); markCurrent(); } }
+  }
+  function setHomeRadio(key) {
+    homeRadio = key;
+    const chips = $("#radioChips"); if (chips) chips.innerHTML = radioChipsHTML();
+    const play = $("#radioPlayAll"); if (play) play.dataset.radio = key;
+    const slot = $("#radioShelf"); if (slot) slot.innerHTML = radioBody(key);
+    if (!radioFeeds[key] || radioFeeds[key].error) loadRadio(key);
+  }
+  async function searchRadio(q, offset, signal) {
+    const enc = encodeURIComponent(q);
+    const r = await fetchStations([`name=${enc}`, `tag=${enc}`, `country=${enc}`], 40, offset || 0, signal);
+    return { items: r.stations, artists: [], next: r.full ? (offset || 0) + 40 : null };
+  }
+  // tell the directory a station was played (their requested etiquette; helps ranking)
+  const countRadioClick = (t) => { if (t.stationId) rbFetch("/json/url/" + encodeURIComponent(t.stationId)).catch(() => {}); };
   const playableAudius = (t) => t && t.id && t.title && t.is_streamable !== false && !(t.access && t.access.stream === false);
 
   /* ---------------- SEARCH ---------------- */
@@ -436,13 +551,16 @@
       <div class="search-tools">
         <div class="seg" role="tablist" aria-label="Music source">
           <button class="${prefs.source === "audius" ? "on" : ""}" data-action="source" data-source="audius" role="tab" aria-selected="${prefs.source === "audius"}"><span class="dot"></span>Free music</button>
+          <button class="${prefs.source === "radio" ? "on" : ""}" data-action="source" data-source="radio" role="tab" aria-selected="${prefs.source === "radio"}"><span class="dot"></span>Radio</button>
           <button class="${prefs.source === "youtube" ? "on" : ""}" data-action="source" data-source="youtube" role="tab" aria-selected="${prefs.source === "youtube"}"><span class="dot"></span>YouTube</button>
         </div>
         <div class="chips" id="filterChips"></div>
       </div>
-      <p class="source-note ${prefs.source === "audius" ? "free" : "yt"}">${prefs.source === "audius"
-        ? icon("wave") + "<span><b>Free music</b> plays in the background and with the screen locked. Mostly independent artists.</span>"
-        : icon("music") + "<span><b>YouTube</b> has the latest hits. Keep MUSICVERSE open while listening — it pauses if you leave the app.</span>"}</p>
+      <p class="source-note ${{ audius: "free", radio: "radio", youtube: "yt" }[prefs.source]}">${{
+        audius: icon("wave") + "<span><b>Free music</b> plays in the background and with the screen locked. Mostly independent artists.</span>",
+        radio: icon("wave") + "<span><b>Live Radio</b> plays the latest hits 24/7, with the screen locked. Search a station name, city or style — e.g. “FM 91”, “bollywood”, “lahore”.</span>",
+        youtube: icon("music") + "<span><b>YouTube</b> has the latest hits. Keep MUSICVERSE open while listening — it pauses if you leave the app.</span>"
+      }[prefs.source]}</p>
       <div class="suggest-row" id="suggestRow"></div>
       <div id="searchBody"></div>`;
     renderFilterChips();
@@ -452,7 +570,7 @@
   }
   function renderFilterChips() {
     const el = $("#filterChips"); if (!el) return;
-    const filters = [["all", "All"], ["songs", "Songs"], ["artists", "Artists"], ["library", "Your library"]];
+    const filters = prefs.source === "radio" ? [["all", "All"], ["library", "Your library"]] : [["all", "All"], ["songs", "Songs"], ["artists", "Artists"], ["library", "Your library"]];
     let html = filters.filter(([f]) => !(f === "artists" && prefs.source === "youtube")).map(([f, l]) => `<button class="chip ${S.filter === f ? "on" : ""}" data-action="filter" data-filter="${f}">${l}</button>`).join("");
     if (prefs.source === "youtube") {
       html += `<span style="width:1px;background:var(--line-2);margin:0 4px"></span>` + ["All", "English", "Pakistani", "Bollywood"].map((g) => `<button class="chip ${prefs.genre === g ? "on" : ""}" data-action="genre" data-genre="${g}">${g === "All" ? "Any language" : g}</button>`).join("");
@@ -516,7 +634,9 @@
     renderSearchBody();
     loadSuggestions(q, seq);
     try {
-      const r = source === "youtube" ? await searchYouTube(q, more ? S.next : null, ctrl.signal) : await searchAudius(q, more ? S.next : 0, ctrl.signal);
+      const r = source === "youtube" ? await searchYouTube(q, more ? S.next : null, ctrl.signal)
+        : source === "radio" ? await searchRadio(q, more ? S.next : 0, ctrl.signal)
+        : await searchAudius(q, more ? S.next : 0, ctrl.signal);
       if (seq !== S.seq) return;
       r.items.forEach((t) => known.set(t.id, t));
       if (more) {
@@ -601,7 +721,9 @@
     if (!q) {
       body.innerHTML = `
         ${state.searches.length ? `<section class="section"><div class="section-head"><div><h2>Recent searches</h2></div><button class="link-btn" data-action="clear-searches">Clear</button></div><div class="chips">${state.searches.map((s) => `<button class="chip" data-action="search-for" data-q="${esc(s)}">${icon("clock")}${esc(s)}<span class="chip-x" data-action="forget-search" data-q="${esc(s)}" aria-label="Remove">${icon("x")}</span></button>`).join("")}</div></section>` : ""}
-        <section class="section"><div class="section-head"><div><h2>Browse all</h2><p>Type even one or two letters above — results appear instantly</p></div></div>${genreGrid()}</section>`;
+        ${prefs.source === "radio"
+          ? `<section class="section"><div class="section-head"><div><h2>Browse stations</h2><p>Type a station, city or style above — or pick one</p></div></div><div class="chips">${RADIO_CATS.map((c) => `<button class="chip" data-action="search-for" data-q="${esc(c.term)}">${icon("wave")}${esc(c.label)}</button>`).join("")}<button class="chip" data-action="search-for" data-q="FM 91">${icon("wave")}FM 91</button><button class="chip" data-action="search-for" data-q="Mirchi">${icon("wave")}Mirchi</button></div></section>`
+          : `<section class="section"><div class="section-head"><div><h2>Browse all</h2><p>Type even one or two letters above — results appear instantly</p></div></div>${genreGrid()}</section>`}`;
       return;
     }
     const local = localMatches(q);
@@ -635,7 +757,7 @@
         <div><div class="section-head"><h2>Top result</h2></div>
           <div class="top-result" data-list="search" data-index="0" data-id="${esc(top.id)}">${artHTML(top, "lg")}<div><h3>${hl(top.title, q)}</h3><p>${hl(top.artist, q)} <span class="badge badge-${esc(top.provider)}">${sourceLabel(top)}</span></p></div><button class="card-play" data-action="play" aria-label="Play ${esc(top.title)}">${icon("play")}</button></div>
         </div>
-        <div><div class="section-head"><h2>Songs</h2>${results.length > 5 ? `<button class="link-btn" data-action="filter" data-filter="songs">Show all</button>` : ""}</div>
+        <div><div class="section-head"><h2>${prefs.source === "radio" ? "Stations" : "Songs"}</h2>${results.length > 5 && prefs.source !== "radio" ? `<button class="link-btn" data-action="filter" data-filter="songs">Show all</button>` : ""}</div>
           ${tracksHTML("searchTop", results.slice(0, 5), { q, compact: true })}
         </div>
       </section>`;
@@ -645,12 +767,12 @@
     }
     if (local.length) html += `<section class="section"><div class="section-head"><div><h2>From your library</h2></div>${local.length > 4 ? `<button class="link-btn" data-action="filter" data-filter="library">Show all</button>` : ""}</div>${tracksHTML("local", local.slice(0, 4), { q, compact: true })}</section>`;
     if (S.artists.length) html += `<section class="section"><div class="section-head"><div><h2>Artists</h2></div><button class="link-btn" data-action="filter" data-filter="artists">Show all</button></div><div class="shelf">${S.artists.slice(0, 8).map(artistCardHTML).join("")}</div></section>`;
-    if (results.length > 5) html += `<section class="section"><div class="section-head"><div><h2>More songs</h2></div></div>${tracksHTML("searchMore", results.slice(5), { q })}${moreBtn()}</section>`;
+    if (results.length > 5) html += `<section class="section"><div class="section-head"><div><h2>${prefs.source === "radio" ? "More stations" : "More songs"}</h2></div></div>${tracksHTML("searchMore", results.slice(5), { q })}${moreBtn()}</section>`;
     if (!results.length && !S.loading && !S.error && !local.length) html += noResults(q);
     body.innerHTML = html;
   }
   const moreBtn = () => (S.next ? `<div class="load-more"><button class="ghost-btn" data-action="more-results" ${S.loading ? "disabled" : ""}>${S.loading ? '<span class="spinner"></span> Loading…' : "Load more"}</button></div>` : "");
-  const noResults = (q) => `<section class="section">${emptyHTML("search", `No results for “${q}”`, prefs.source === "audius" ? "Audius is mostly independent artists. Try another spelling, or switch to YouTube for mainstream songs." : "Try another spelling or a different keyword.", prefs.source === "audius" ? `<button class="ghost-btn" data-action="source" data-source="youtube">Search YouTube instead</button>` : `<button class="ghost-btn" data-action="source" data-source="audius">Search free music instead</button>`)}</section>`;
+  const noResults = (q) => prefs.source === "radio" ? `<section class="section">${emptyHTML("wave", `No stations for “${q}”`, "Try a city, language or style — e.g. “lahore”, “hindi”, “pop”.")}</section>` : `<section class="section">${emptyHTML("search", `No results for “${q}”`, prefs.source === "audius" ? "Audius is mostly independent artists. Try another spelling, or switch to YouTube for mainstream songs." : "Try another spelling or a different keyword.", prefs.source === "audius" ? `<button class="ghost-btn" data-action="source" data-source="youtube">Search YouTube instead</button>` : `<button class="ghost-btn" data-action="source" data-source="audius">Search free music instead</button>`)}</section>`;
   function artistCardHTML(a) {
     return `<article class="card artist" data-href="artist/${esc(a.id)}" tabindex="0">${artHTML({ title: a.name, artist: a.handle, artwork: a.artwork }, "lg", "round")}<strong>${S.q ? hl(a.name, S.q) : esc(a.name)}</strong><small>Artist · ${plural(a.tracks, "track")}</small></article>`;
   }
@@ -820,8 +942,11 @@
     const n = $("#npNote");
     if (!current) { n.hidden = true; return; }
     n.hidden = false;
-    n.className = "np-note " + (mode === "audio" ? "free" : mode === "yt" ? "yt" : "");
-    n.innerHTML = mode === "audio"
+    const isRadio = current.provider === "radio";
+    n.className = "np-note " + (isRadio ? "radio" : mode === "audio" ? "free" : mode === "yt" ? "yt" : "");
+    n.innerHTML = isRadio
+      ? `${icon("wave")}<span><b>Live radio — keeps playing with the screen locked.</b> The station picks the songs. Use next / previous to switch stations.</span>`
+      : mode === "audio"
       ? `${icon("wave")}<span><b>Plays in the background.</b> You can lock your phone or switch apps.</span>`
       : mode === "yt"
         ? `${icon("music")}<span><b>Keep MUSICVERSE open.</b> YouTube pauses if you leave the app — the screen stays on while it plays.</span>`
@@ -845,10 +970,11 @@
     state.recent = [t.id, ...state.recent.filter((x) => x !== t.id)].slice(0, 40);
     persist();
 
-    if (t.provider === "audius") {
+    if (t.provider === "audius" || t.provider === "radio") {
       mode = "audio";
       npMedia.dataset.mode = "art";
-      audio.src = audioUrl(t);
+      audio.src = t.provider === "radio" ? t.streamUrl : audioUrl(t);
+      if (t.provider === "radio") { radioRetries = 0; countRadioClick(t); }
       audio.volume = prefs.muted ? 0 : prefs.volume;
       const p = audio.play();
       if (p && p.catch) p.catch((e) => { if (e && e.name === "NotAllowedError") { setPlaying(false); toast("Tap play to start listening"); } });
@@ -934,17 +1060,36 @@
   audio.addEventListener("pause", () => { if (mode === "audio" && audio.getAttribute("src")) setPlaying(false); });
   audio.addEventListener("timeupdate", () => { if (mode === "audio") updateProgress(audio.currentTime, audio.duration); });
   audio.addEventListener("loadedmetadata", () => { if (mode === "audio") updateProgress(audio.currentTime, audio.duration); });
-  audio.addEventListener("ended", () => { if (mode === "audio") onEnded(); });
+  audio.addEventListener("ended", () => {
+    if (mode !== "audio") return;
+    if (isRadio()) { reconnectRadio(); return; } // live streams shouldn't end: reconnect
+    onEnded();
+  });
+  // Live radio watchdog: if the stream stalls (weak signal, switching Wi-Fi/mobile data), reconnect.
+  let radioRetries = 0, lastProgressAt = 0;
+  const isRadio = () => !!current && current.provider === "radio";
+  audio.addEventListener("timeupdate", () => { lastProgressAt = Date.now(); if (isRadio() && audio.currentTime > 5) radioRetries = 0; });
+  function reconnectRadio() {
+    if (!isRadio()) return;
+    if (radioRetries >= 3) { toast("This station keeps dropping — switching to the next one"); radioRetries = 0; next(true); return; }
+    radioRetries++;
+    lastProgressAt = Date.now();
+    audio.src = current.streamUrl;
+    audio.play().catch(() => {});
+  }
+  setInterval(() => {
+    if (mode === "audio" && isRadio() && !audio.paused && Date.now() - lastProgressAt > 15000) reconnectRadio();
+  }, 5000);
   audio.addEventListener("error", () => {
     if (mode !== "audio" || !audio.getAttribute("src")) return;
     errStreak++;
-    if (errStreak >= 3 || queue.length < 2) { toast("This track can't be played right now."); setPlaying(false); return; }
-    toast("Track unavailable — skipping…");
+    if (errStreak >= 3 || queue.length < 2) { toast(isRadio() ? "This station is offline right now — try another one." : "This track can't be played right now."); setPlaying(false); return; }
+    toast(isRadio() ? "Station offline — trying the next one…" : "Track unavailable — skipping…");
     setTimeout(() => next(true), 600);
   });
 
   function onEnded() {
-    if (prefs.repeat === "one") { seekTo(0); resume(); return; }
+    if (prefs.repeat === "one") { if (isRadio()) { reconnectRadio(); return; } seekTo(0); resume(); return; }
     next(true);
   }
   function pickShuffle() {
@@ -963,7 +1108,7 @@
   }
   function prev() {
     if (!queue.length) { toast("Pick a song to start listening"); return; }
-    if (currentTime() > 3) { seekTo(0); return; }
+    if (currentTime() > 3 && !isRadio()) { seekTo(0); return; }
     if (prefs.shuffle && shuffleHistory.length) qi = shuffleHistory.pop();
     else qi = qi > 0 ? qi - 1 : (prefs.repeat === "all" ? queue.length - 1 : 0);
     start(queue[qi]);
@@ -983,7 +1128,11 @@
     else if (mode === "yt" && yt && ytPlayerReady) yt.seekTo(sec, true);
   }
   function resume() {
-    if (mode === "audio") audio.play().catch(() => toast("Tap play to start listening"));
+    if (mode === "audio") {
+      // radio: jump back to the live broadcast instead of resuming an old buffer
+      if (isRadio()) { lastProgressAt = Date.now(); audio.src = current.streamUrl; }
+      audio.play().catch(() => toast("Tap play to start listening"));
+    }
     else if (mode === "yt" && yt && ytPlayerReady) yt.playVideo();
   }
   function pause() {
@@ -1026,7 +1175,7 @@
       if (!seeking) { el.value = String(Math.round(pct * 10)); el.style.setProperty("--p", pct + "%"); }
     });
     $$('[data-np="cur"]').forEach((el) => { el.textContent = fmt(cur); });
-    $$('[data-np="dur"]').forEach((el) => { el.textContent = ok ? fmt(dur) : (current && current.duration ? fmt(current.duration) : "0:00"); });
+    $$('[data-np="dur"]').forEach((el) => { el.textContent = current && current.provider === "radio" ? "LIVE" : ok ? fmt(dur) : (current && current.duration ? fmt(current.duration) : "0:00"); });
     const mini = $('[data-np="mini-progress"]'); if (mini) mini.style.width = pct + "%";
     if (ok && navigator.mediaSession && navigator.mediaSession.setPositionState && mode === "audio") {
       try { navigator.mediaSession.setPositionState({ duration: dur, playbackRate: 1, position: Math.min(cur, dur) }); } catch (e) { /* ignore */ }
@@ -1301,6 +1450,18 @@
         case "retry-search": runSearch(S.q); return;
         case "retry-trending": trendingError = false; renderHome(); return;
         case "home-genre": setHomeGenre(a.dataset.genre); return;
+        case "home-radio": setHomeRadio(a.dataset.radio); return;
+        case "retry-radio": setHomeRadio(a.dataset.radio); return;
+        case "play-radio": {
+          const key = a.dataset.radio || homeRadio;
+          const f = radioFeeds[key];
+          if (f && f.items.length) { lists.__radio = f.items; playListKey("__radio"); return; }
+          toast("Tuning in…");
+          await loadRadio(key);
+          const g = radioFeeds[key];
+          if (g && g.items.length) { lists.__radio = g.items; playListKey("__radio"); } else toast("Couldn't load radio stations — check your connection");
+          return;
+        }
         case "retry-feed": loadFeed(a.dataset.feed); { const s = document.getElementById(feedSlot(a.dataset.feed)); if (s) s.innerHTML = skeletonCards(6); } return;
         case "play-feed": {
           const f = feeds[a.dataset.feed];
