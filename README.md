@@ -44,3 +44,12 @@ Set `YOUTUBE_API_KEY` in the local Vercel environment (for example via the Verce
 ## Data and privacy
 Favorites, playlists and recently played items are stored in the current browser's localStorage and do not sync between devices. Search uses the shared server-side API key configured by the site owner. Do not put personal or private information in this public repository.
 
+
+## Android app (APK)
+The Android app is a Trusted Web Activity generated with PWABuilder. It opens this website full screen.
+- `/.well-known/assetlinks.json` links the app (`app.vercel.musicverse_ecru.twa`) to this site. Without it, the app shows a browser address bar. Don't delete it.
+- Keep `signing.keystore` and `signing-key-info.txt` from the PWABuilder package private and backed up. They are needed to sign future versions with the same key, and they must never be committed to this repo.
+- Website updates show up in the app automatically; you only need a new APK if the app name, icon or package settings change.
+
+## iPhone
+Open the site in Safari → Share → **Add to Home Screen**.
