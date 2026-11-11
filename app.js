@@ -198,7 +198,8 @@
       embed: "https://www.youtube-nocookie.com/embed/" + v
     };
   }
-  const sourceLabel = (t) => ({ audius: "Audius", youtube: "YouTube", spotify: "Spotify" }[t.provider] || "Link");
+  const sourceLabel = (t) => ({ audius: "Free", youtube: "YouTube", spotify: "Spotify" }[t.provider] || "Link");
+  const siteName = (t) => ({ audius: "Audius", youtube: "YouTube", spotify: "Spotify" }[t.provider] || "source");
   const isLiked = (id) => state.favorites.includes(id);
 
   /* ---------------- rendering primitives ---------------- */
@@ -307,6 +308,7 @@
     const feature = (trending && trending[0]) || recent[0];
     const quick = [`<div class="quick-tile" data-href="liked"><span class="side-cover cover-liked">${icon("heart-fill")}</span><strong>Liked Songs</strong><button class="play-btn" data-action="play-collection" data-collection="liked" aria-label="Play Liked Songs">${icon("play", "ic-play")}${icon("pause", "ic-pause")}</button></div>`];
     state.playlists.slice(0, 3).forEach((p) => quick.push(`<div class="quick-tile" data-href="playlist/${esc(p.id)}">${playlistSmallCover(p)}<strong>${esc(p.name)}</strong><button class="play-btn" data-action="play-collection" data-collection="playlist:${esc(p.id)}" aria-label="Play ${esc(p.name)}">${icon("play")}</button></div>`));
+    if (trending) lists.trending = trending;
     lists.quick = recent.slice(0, 8 - quick.length);
     lists.quick.forEach((t, i) => quick.push(`<div class="quick-tile ${current && current.id === t.id ? "is-current" : ""}" data-list="quick" data-index="${i}" data-id="${esc(t.id)}">${artHTML(t, "md")}<strong>${esc(t.title)}</strong><button class="play-btn" data-action="play" aria-label="Play ${esc(t.title)}">${icon("play")}</button></div>`));
 
@@ -316,7 +318,7 @@
         <div class="hero-copy">
           <span class="eyebrow">${esc(greeting())}</span>
           <h1>Every mood.<br><span>One universe.</span></h1>
-          <p>Stream free tracks with background play, find any song on YouTube, and keep your favourites in one place.</p>
+          <p><b class="hl-free">Free music</b> keeps playing in the background. <b class="hl-yt">YouTube</b> has every latest hit — just keep the app open. Save favourites from both in one place.</p>
           <div class="hero-actions">
             <button class="primary-btn" data-action="play-trending">${icon("play")} Play trending</button>
             <button class="ghost-btn" data-action="focus-search">${icon("search")} Search music</button>
@@ -327,9 +329,25 @@
       <div class="quick-grid">${quick.join("")}</div>
 
       <section class="section">
-        <div class="section-head"><div><h2>Trending now</h2><p>Free to stream — keeps playing with your screen locked</p></div><button class="link-btn" data-action="play-trending">Play all</button></div>
-        <div id="trendingShelf">${trending ? (trending.length ? cardsHTML("trending", trending) : emptyHTML("wave", "Nothing trending right now", "Try searching for a song instead.")) : trendingError ? emptyHTML("wave", "Couldn't load trending music", "Check your connection, then try again.", `<button class="ghost-btn" data-action="retry-trending">Try again</button>`) : skeletonCards(6)}</div>
+        <div class="section-head"><div><h2>Trending this week <span class="src-tag src-free">${icon("wave")} Free · plays in background</span></h2><p>Full songs from independent artists — keeps playing with your screen locked</p></div><button class="link-btn" data-action="play-feed" data-feed="trend:${esc(homeGenre)}">Play all</button></div>
+        <div class="chips feed-chips" id="feedChips">${feedChipsHTML()}</div>
+        <div id="feed-trend">${feedBody("trend:" + homeGenre)}</div>
       </section>
+
+      <section class="section">
+        <div class="section-head"><div><h2>New &amp; rising</h2><p>Fresh uploads from artists on the way up</p></div><button class="link-btn" data-action="play-feed" data-feed="rising">Play all</button></div>
+        <div id="feed-rising">${feedBody("rising")}</div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><div><h2>Top this month</h2><p>The most-played free tracks of the last 30 days</p></div><button class="link-btn" data-action="play-feed" data-feed="month">Play all</button></div>
+        <div id="feed-month">${feedBody("month")}</div>
+      </section>
+
+      <div class="source-callout">
+        <div class="source-callout-item"><span class="src-tag src-free">${icon("wave")} Free music</span><p>Plays in the background and with the screen locked. Independent artists, so mainstream hits may be missing.</p></div>
+        <div class="source-callout-item"><span class="src-tag src-yt">${icon("music")} YouTube</span><p>The latest hits and every big release. Keep MUSICVERSE open while listening — YouTube pauses when you leave the app.</p><button class="ghost-btn" data-action="search-youtube">${icon("search")} Search YouTube hits</button></div>
+      </div>
 
       ${recent.length ? `<section class="section"><div class="section-head"><div><h2>Jump back in</h2><p>Your recently played</p></div><a class="link-btn" href="#/recent">Show all</a></div>${cardsHTML("recentShelf", recent.slice(0, 12))}</section>` : ""}
 
@@ -340,22 +358,64 @@
 
       ${state.playlists.length ? `<section class="section"><div class="section-head"><div><h2>Your playlists</h2></div><a class="link-btn" href="#/library">Library</a></div><div class="shelf">${state.playlists.map(playlistCardHTML).join("")}</div></section>` : ""}
     `;
-    if (!trending && !trendingLoading && !trendingError) loadTrending();
+    ["trend:" + homeGenre, "rising", "month"].forEach((k) => { if (!feeds[k]) loadFeed(k); });
+    if (homeGenre !== "All" && !feeds["trend:All"]) loadFeed("trend:All"); // hero + "Play trending"
+  }
+
+  /* Free-music feeds (Audius) */
+  const FEED_GENRES = [["All", ""], ["Hip-Hop", "Hip-Hop/Rap"], ["Pop", "Pop"], ["Electronic", "Electronic"], ["Lo-Fi", "Lo-Fi"], ["R&B", "R&B/Soul"], ["World", "World"], ["Chill", "Ambient"]];
+  let homeGenre = "All";
+  const feeds = Object.create(null); // key -> { loading, error, items }
+  function feedUrl(key) {
+    if (key === "rising") return `${AUDIUS}/tracks/trending/underground?${new URLSearchParams({ limit: "24", app_name: APP })}`;
+    if (key === "month") return `${AUDIUS}/tracks/trending?${new URLSearchParams({ time: "month", limit: "24", app_name: APP })}`;
+    const label = key.slice(6);
+    const genre = (FEED_GENRES.find((g) => g[0] === label) || ["", ""])[1];
+    const p = new URLSearchParams({ time: "week", limit: "24", app_name: APP });
+    if (genre) p.set("genre", genre);
+    return `${AUDIUS}/tracks/trending?${p}`;
+  }
+  const feedSlot = (key) => (key.startsWith("trend:") ? "feed-trend" : "feed-" + key);
+  function feedBody(key) {
+    const f = feeds[key];
+    if (!f || f.loading) return skeletonCards(6);
+    if (f.error) return emptyHTML("wave", "Couldn't load this list", "Check your connection, then try again.", `<button class="ghost-btn" data-action="retry-feed" data-feed="${esc(key)}">Try again</button>`);
+    if (!f.items.length) return emptyHTML("wave", "Nothing here right now", "Try another genre or search for a song.");
+    return cardsHTML("feed:" + key, f.items);
+  }
+  function feedChipsHTML() {
+    return FEED_GENRES.map(([l]) => `<button class="chip ${homeGenre === l ? "on" : ""}" data-action="home-genre" data-genre="${esc(l)}">${esc(l === "All" ? "All genres" : l)}</button>`).join("");
+  }
+  async function loadFeed(key) {
+    if (feeds[key] && feeds[key].loading) return;
+    feeds[key] = { loading: true, error: false, items: [] };
+    try {
+      const j = await fetchJSON(feedUrl(key));
+      const items = (j.data || []).filter(playableAudius).map(audiusTrack);
+      items.forEach((t) => known.set(t.id, t));
+      feeds[key] = { loading: false, error: false, items };
+    } catch (e) {
+      feeds[key] = { loading: false, error: true, items: [] };
+    }
+    if (key === "trend:All") { trending = feeds[key].items; trendingError = feeds[key].error; }
+    if (parseHash().name !== "home") return;
+    if (key === "trend:All" && trending.length && !$(".hero-feature")) { const st = main.scrollTop; renderHome(); main.scrollTop = st; return; }
+    const slot = document.getElementById(feedSlot(key));
+    if (slot && (!key.startsWith("trend:") || key === "trend:" + homeGenre)) { slot.innerHTML = feedBody(key); markCurrent(); }
+  }
+  function setHomeGenre(g) {
+    homeGenre = g;
+    const chips = $("#feedChips"); if (chips) chips.innerHTML = feedChipsHTML();
+    const play = chips && chips.closest(".section").querySelector('[data-action="play-feed"]'); if (play) play.dataset.feed = "trend:" + g;
+    const key = "trend:" + g;
+    const slot = $("#feed-trend"); if (slot) slot.innerHTML = feedBody(key);
+    if (!feeds[key] || feeds[key].error) loadFeed(key);
   }
   function playlistCardHTML(p) {
     const first = p.trackIds.map(getTrack).find(Boolean);
     return `<article class="card" data-href="playlist/${esc(p.id)}" tabindex="0">${artHTML(first || { title: p.name, artist: p.id }, "lg")}<button class="card-play" data-action="play-collection" data-collection="playlist:${esc(p.id)}" aria-label="Play ${esc(p.name)}">${icon("play")}</button><strong>${esc(p.name)}</strong><small>Playlist · ${plural(p.trackIds.length, "song")}</small></article>`;
   }
-  async function loadTrending() {
-    trendingLoading = true; trendingError = false;
-    try {
-      const j = await fetchJSON(`${AUDIUS}/tracks/trending?${new URLSearchParams({ time: "week", limit: "24", app_name: APP })}`);
-      trending = (j.data || []).filter(playableAudius).map(audiusTrack);
-      trending.forEach((t) => known.set(t.id, t));
-    } catch (e) { trendingError = true; }
-    trendingLoading = false;
-    if (parseHash().name === "home") renderHome();
-  }
+  function loadTrending() { return loadFeed("trend:All"); }
   const playableAudius = (t) => t && t.id && t.title && t.is_streamable !== false && !(t.access && t.access.stream === false);
 
   /* ---------------- SEARCH ---------------- */
@@ -380,6 +440,9 @@
         </div>
         <div class="chips" id="filterChips"></div>
       </div>
+      <p class="source-note ${prefs.source === "audius" ? "free" : "yt"}">${prefs.source === "audius"
+        ? icon("wave") + "<span><b>Free music</b> plays in the background and with the screen locked. Mostly independent artists.</span>"
+        : icon("music") + "<span><b>YouTube</b> has the latest hits. Keep MUSICVERSE open while listening — it pauses if you leave the app.</span>"}</p>
       <div class="suggest-row" id="suggestRow"></div>
       <div id="searchBody"></div>`;
     renderFilterChips();
@@ -725,7 +788,45 @@
     document.head.appendChild(s);
   }
 
-  function setPlaying(b) { playing = b; document.body.classList.toggle("is-playing", b); if (navigator.mediaSession) navigator.mediaSession.playbackState = b ? "playing" : current ? "paused" : "none"; }
+  function setPlaying(b) { playing = b; document.body.classList.toggle("is-playing", b); if (navigator.mediaSession) navigator.mediaSession.playbackState = b ? "playing" : current ? "paused" : "none"; syncWakeLock(); }
+
+  /* Keep the screen on while a YouTube song plays: YouTube pauses when the
+     phone locks or the app is left, so we stop the screen from auto-locking. */
+  let wakeLock = null, wakeBusy = false, ytWasPlayingWhenHidden = false;
+  async function syncWakeLock() {
+    if (!("wakeLock" in navigator) || wakeBusy) return;
+    const want = playing && mode === "yt" && document.visibilityState === "visible";
+    wakeBusy = true;
+    try {
+      if (want && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => { wakeLock = null; });
+      } else if (!want && wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    } catch (e) { wakeLock = null; }
+    wakeBusy = false;
+    const stillWant = playing && mode === "yt" && document.visibilityState === "visible";
+    if (stillWant !== !!wakeLock) setTimeout(syncWakeLock, 0);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { ytWasPlayingWhenHidden = mode === "yt" && playing; return; }
+    syncWakeLock();
+    if (ytWasPlayingWhenHidden && mode === "yt" && !playing) toast("YouTube paused while you were away — tap play to continue");
+    ytWasPlayingWhenHidden = false;
+  });
+  function updateModeNote() {
+    const n = $("#npNote");
+    if (!current) { n.hidden = true; return; }
+    n.hidden = false;
+    n.className = "np-note " + (mode === "audio" ? "free" : mode === "yt" ? "yt" : "");
+    n.innerHTML = mode === "audio"
+      ? `${icon("wave")}<span><b>Plays in the background.</b> You can lock your phone or switch apps.</span>`
+      : mode === "yt"
+        ? `${icon("music")}<span><b>Keep MUSICVERSE open.</b> YouTube pauses if you leave the app — the screen stays on while it plays.</span>`
+        : `${icon("link")}<span>Use the player above to play this ${esc(sourceLabel(current))} link.</span>`;
+  }
 
   function playFrom(list, index) {
     if (!list || !list.length) return;
@@ -943,6 +1044,7 @@
     $("#player").style.setProperty("--h", h);
     document.title = t ? `${t.title} · ${t.artist} — MUSICVERSE` : "MUSICVERSE";
     updateLikes();
+    updateModeNote();
   }
   function updateLikes() {
     $$("[data-like]").forEach((b) => { const on = isLiked(b.dataset.like); b.classList.toggle("liked", on); b.setAttribute("aria-label", (on ? "Remove from" : "Add to") + " Liked Songs"); });
@@ -1103,7 +1205,7 @@
       <hr><div class="menu-label">Add to playlist</div>
       <button data-m="new-pl">${icon("plus")} New playlist</button>
       ${state.playlists.map((p) => `<button data-m="pl" data-pid="${esc(p.id)}">${icon("music")} ${esc(p.name)}</button>`).join("")}
-      ${t.url ? `<hr><a href="${esc(t.url)}" target="_blank" rel="noopener noreferrer">${icon("external")} Open on ${sourceLabel(t)}</a>` : ""}`;
+      ${t.url ? `<hr><a href="${esc(t.url)}" target="_blank" rel="noopener noreferrer">${icon("external")} Open on ${siteName(t)}</a>` : ""}`;
     menu.hidden = false;
     const r = btn.getBoundingClientRect();
     const mw = menu.offsetWidth, mh = menu.offsetHeight;
@@ -1198,6 +1300,17 @@
         case "more-results": runSearch(S.q, true); return;
         case "retry-search": runSearch(S.q); return;
         case "retry-trending": trendingError = false; renderHome(); return;
+        case "home-genre": setHomeGenre(a.dataset.genre); return;
+        case "retry-feed": loadFeed(a.dataset.feed); { const s = document.getElementById(feedSlot(a.dataset.feed)); if (s) s.innerHTML = skeletonCards(6); } return;
+        case "play-feed": {
+          const f = feeds[a.dataset.feed];
+          if (f && f.items.length) { lists.__feed = f.items; playListKey("__feed"); } else toast("Still loading — try again in a second");
+          return;
+        }
+        case "search-youtube":
+          prefs.source = "youtube"; savePrefs(); S.filter = "all";
+          go("search/" + encodeURIComponent("latest hindi songs"));
+          return;
         case "reload-view": render(); return;
         case "play-trending":
           if (trending && trending.length) playFrom(trending, 0);

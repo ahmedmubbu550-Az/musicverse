@@ -412,8 +412,36 @@ body:not(.is-playing) .eq i { animation-play-state: paused; transform: scaleY(.4
 .np-yt { aspect-ratio: 16 / 9; }
 .np-yt iframe, .np-yt > div { width: 100%; height: 100%; display: block; border: 0; }
 .np-embed iframe { display: block; width: 100%; height: 352px; border: 0; }
-.np-media[data-mode="yt"] .np-art, .np-media[data-mode="embed"] .np-art { display: none; }
-.np-media[data-mode="yt"] .np-yt { display: block; }
+.np-media[data-mode="embed"] .np-art { display: none; }
+/* YouTube "music mode": artwork up top like a music app, the (required) player below */
+.np-media[data-mode="yt"] { display: grid; gap: 12px; justify-items: center; }
+.np-media[data-mode="yt"] .np-art { width: 64%; }
+.np-media[data-mode="yt"] .np-art .art-xl { font-size: 120px; }
+.np-media[data-mode="yt"] .np-yt { display: block; width: 100%; min-height: 200px; }
+
+.np-note { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); background: rgba(255,255,255,.05); border: 1px solid var(--line); }
+.np-note .i { width: 17px; height: 17px; margin-top: 1px; }
+.np-note b { color: var(--text); font-weight: 700; }
+.np-note.free { border-color: rgba(139,108,255,.3); background: rgba(139,108,255,.08); }
+.np-note.free .i { color: #b9a7ff; }
+.np-note.yt { border-color: rgba(255,80,80,.28); background: rgba(255,80,80,.07); }
+.np-note.yt .i { color: #ff8a8a; }
+
+/* Source labels */
+.src-tag { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .04em; vertical-align: middle; white-space: nowrap; }
+.src-tag .i { width: 13px; height: 13px; }
+.section-head h2 .src-tag { margin-left: 8px; position: relative; top: -2px; }
+.src-free { color: #cbbfff; background: rgba(139,108,255,.14); border: 1px solid rgba(139,108,255,.35); }
+.src-yt { color: #ffb0b0; background: rgba(255,80,80,.1); border: 1px solid rgba(255,80,80,.3); }
+.feed-chips { margin: -2px 0 14px; }
+.source-callout { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 34px; }
+.source-callout-item { display: grid; gap: 10px; align-content: start; justify-items: start; padding: 18px; border-radius: var(--radius-lg); background: rgba(255,255,255,.035); border: 1px solid var(--line); }
+.source-callout-item p { color: var(--text-2); font-size: 13.5px; }
+.source-callout-item .ghost-btn { height: 38px; font-size: 13px; }
+.source-note { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 12.5px; margin: 2px 0 4px; }
+.source-note .i { width: 15px; height: 15px; flex: none; }
+.source-note.free .i { color: #b9a7ff; }
+.source-note.yt .i { color: #ff8a8a; }
 .np-media[data-mode="embed"] .np-embed { display: block; }
 .np-meta { display: flex; align-items: center; gap: 12px; }
 .np-titles { flex: 1; min-width: 0; }
@@ -570,6 +598,12 @@ body:not(.is-playing) .eq i { animation-play-state: paused; transform: scaleY(.4
   .card .card-play { display: none; }
   .card-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
   .genre-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .source-callout { grid-template-columns: 1fr; gap: 10px; margin-top: 28px; }
+  .section-head h2 .src-tag { display: flex; width: max-content; margin: 6px 0 0; top: 0; }
+  .feed-chips { flex-wrap: nowrap; overflow-x: auto; margin-left: -16px; margin-right: -16px; padding: 0 16px; scrollbar-width: none; }
+  .feed-chips::-webkit-scrollbar { display: none; }
+  .feed-chips .chip { flex: none; }
+  .np-media[data-mode="yt"] .np-art { width: 50%; }
   .genre { height: 92px; font-size: 16px; padding: 14px; }
   .genre .glyph { font-size: 72px; }
 
@@ -668,3 +702,6 @@ body:not(.is-playing) .eq i { animation-play-state: paused; transform: scaleY(.4
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+.hero p b.hl-free { color: #cbbfff; }
+.hero p b.hl-yt { color: #ffb0b0; }
